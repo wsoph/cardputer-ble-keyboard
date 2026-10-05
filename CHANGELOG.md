@@ -8,6 +8,7 @@
 - Add three help pages cycled with Opt+H.
 - Portable build scripts and separate Launcher/standalone release artifacts.
 - Fix Linux native builds by using explicit standard size types.
+- Pin both PlatformIO and esptool so clean environments can package firmware.
 
 ## 0.1.3
 

@@ -3,7 +3,7 @@ from pathlib import Path
 
 TOP_LEVEL = ('README.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'CHANGELOG.md',
              'CONTRIBUTING.md', '.gitignore', 'platformio.ini', 'Build-Keyboard.ps1',
-             'Test-Keyboard.ps1', 'Package-Keyboard.ps1')
+             'Test-Keyboard.ps1', 'Package-Keyboard.ps1', 'requirements.txt')
 DIRECTORIES = ('src', 'include', 'test', 'tools', 'docs', 'assets', 'release', 'LICENSES', '.github')
 EXTENSIONS = {'.h', '.cpp', '.py', '.ps1', '.md', '.json', '.txt', '.svg', '.yml', '.yaml'}
 

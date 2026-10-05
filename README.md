@@ -59,7 +59,7 @@ Chinese uses the phone or target computer's input method. The firmware sends US 
 Install Python and [PlatformIO Core](https://docs.platformio.org/en/latest/core/installation/index.html):
 
 ```sh
-python -m pip install platformio==6.1.18
+python -m pip install -r requirements.txt
 python -m platformio run -e cardputer-ble-keyboard
 ```
 

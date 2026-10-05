@@ -20,6 +20,10 @@ parser.add_argument('--framework-dir', required=True, type=Path)
 parser.add_argument('--package-root', required=True, type=Path)
 parser.add_argument('--cover', type=Path)
 args = parser.parse_args()
+try:
+    import esptool
+except ModuleNotFoundError:
+    raise SystemExit('Missing esptool. Install requirements.txt before packaging.')
 root = Path(__file__).resolve().parents[1]
 match = re.search(r'CARDKEY_VERSION\s+"(\d+\.\d+\.\d+)"', (root / 'include/version.h').read_text())
 if not match:
