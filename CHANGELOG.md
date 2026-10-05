@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Add Opt+physical semicolon / period for standard mouse wheel up / down; no Fn or mode switch.
+- Tap for one step; hold for bounded continuous scrolling; release to stop, including while the screen is off.
+- Keep keyboard input independent of the mouse report subscription; prevent replay after reconnect, partial releases or send failures.
+- Show scroll readiness and physical shortcuts on Home; add a scroll help page.
+- Document RustDesk Touch mode, pointer placement and phone re-pairing for cached HID descriptors.
+- Phone/RustDesk and each application's scroll behavior require device acceptance before publishing binaries.
+
 ## 0.1.4
 
 - Replace app-specific screen wording with general Bluetooth keyboard instructions.

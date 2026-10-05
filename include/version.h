@@ -1,2 +1,2 @@
 #pragma once
-#define CARDKEY_VERSION "0.1.4"
+#define CARDKEY_VERSION "0.2.0"

@@ -69,7 +69,7 @@ manifest = {
     'version': version, 'created_utc': datetime.now(timezone.utc).isoformat(),
     'target': 'M5Stack Cardputer-ADV / ESP32-S3', 'image_validated': True,
     'device_tested': False, 'standalone_device_tested': False, 'credentials_embedded': False,
-    'keyboard_native_checks': 100,
+    'keyboard_native_checks': 214,
     'installation': {'launcher_app': app_name, 'standalone': standalone_name,
                      'standalone_address': '0x0000', 'standalone_flash_bytes': 8388608,
                      'standalone_nvs_blank': True},

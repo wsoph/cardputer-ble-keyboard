@@ -1,9 +1,11 @@
 #include <M5Cardputer.h>
 #include "ble_keyboard.h"
+#include "wheel_core.h"
 #include "version.h"
 
 namespace {
 KeyboardCore keyboard;
+WheelCore wheel;
 BleKeyboard ble;
 M5Canvas canvas(&M5Cardputer.Display);
 bool canvasReady = false, frameValid = false;
@@ -43,6 +45,7 @@ bool sameView(const BleKeyboardStatus& status, bool ready) {
     if (status.prompt.kind != PairingKind::None) return status.prompt.displayNumber == previous.prompt.displayNumber;
     if (helpPage) return true;
     return ready == displayedReady && status.connected == previous.connected
+        && status.wheelReady == previous.wheelReady
         && status.authenticated == previous.authenticated && status.pairing == previous.pairing
         && (!status.pairing || status.pairingSeconds == previous.pairingSeconds)
         && status.error == previous.error && (!status.error || status.sendError == previous.sendError)
@@ -104,25 +107,34 @@ void draw(bool force = false) {
         else line(96, "Complete on phone; Fn+`: cancel");
         line(115, "Finish within 30 seconds");
     } else if (helpPage == 1) {
-        line(20, "Help 1/3: Pair & screen", TFT_YELLOW);
+        line(20, "Help 1/4: Pair & screen", TFT_YELLOW);
         line(34, "Opt+P -> release ALL -> Enter");
         line(47, "Phone Bluetooth: select");
         line(60, "Cardputer Keyboard", TFT_CYAN);
         line(73, "Follow PIN prompt within 30s");
         line(88, "Opt+B: manual screen OFF / ON", TFT_GREEN);
-        line(101, "Screen OFF: typing still works");
-        line(117, "Opt+H: next page (2/3)");
+        line(101, "Dark: typing + scroll still work");
+        line(117, "Opt+H: next page (2/4)");
     } else if (helpPage == 2) {
-        line(20, "Help 2/3: Basic keys", TFT_YELLOW);
+        line(20, "Help 2/4: Basic keys", TFT_YELLOW);
         line(34, "Ctrl / Alt / Aa: modifiers");
         line(47, "Aa = Shift; Del = Backspace");
         line(60, "Fn+; , . /: up left down right");
         line(73, "Fn+`: Esc   Fn+Del: Delete");
         line(86, "Fn+1..0 - =: F1..F12");
         line(101, "Use US physical keyboard layout");
-        line(117, "Opt+H: next page (3/3)");
+        line(117, "Opt+H: next page (3/4)");
     } else if (helpPage == 3) {
-        line(20, "Help 3/3: Daily use", TFT_YELLOW);
+        line(20, "Help 3/4: Scroll", TFT_YELLOW);
+        line(34, "Opt+; : scroll UP", TFT_GREEN);
+        line(47, "Opt+. : scroll DOWN", TFT_GREEN);
+        line(60, "Use physical keys; no Fn needed");
+        line(73, "Tap: 1 step; hold: repeat");
+        line(86, "Release: stop immediately");
+        line(101, "Point mouse at area to scroll");
+        line(117, "Opt+H: next page (4/4)");
+    } else if (helpPage == 4) {
+        line(20, "Help 4/4: Daily use", TFT_YELLOW);
         line(34, "Select a text field, then type");
         line(47, "Opt+C / V: Ctrl+Shift+C / V");
         line(60, "Terminal copy/paste: app-specific");
@@ -131,15 +143,15 @@ void draw(bool force = false) {
         line(101, "Opt+B: manual screen OFF / ON", TFT_GREEN);
         line(117, "Opt+H: back to keyboard");
     } else {
-        if (ready) line(21, "Connected - ready to type", TFT_GREEN);
+        if (ready) line(21, status.wheelReady ? "Connected - keyboard + scroll" : "Connected - keyboard only", TFT_GREEN);
         else if (status.connected && status.authenticated) line(21, "Connected - waiting for HID", TFT_YELLOW);
         else if (status.connected) line(21, "Connected - authenticating", TFT_YELLOW);
         else line(21, "Waiting for phone", TFT_YELLOW);
         line(37, "Name: Cardputer Keyboard");
         if (ready) {
-            line(53, "Use US physical keyboard layout");
-            line(67, status.capsLock ? "Caps Lock ON; select a text field" : "Select a text field, then type");
-            line(81, "Opt+H: pairing & key help");
+            line(53, "Scroll UP: Opt+;   DOWN: Opt+.", TFT_CYAN);
+            line(67, status.wheelReady ? "Point mouse at area; hold to scroll" : "No scroll: forget + re-pair phone");
+            line(81, status.capsLock ? "Caps Lock ON; Opt+H: help" : "Select text field to type; Opt+H");
         } else {
             if (status.pairing) {
                 display.setTextColor(TFT_GREEN, TFT_BLACK); display.setCursor(4, 53);
@@ -153,7 +165,7 @@ void draw(bool force = false) {
             display.setTextColor(TFT_RED, TFT_BLACK); display.setCursor(4, 115);
             if (status.sendError) display.printf("BLE error %u (send %ld)", status.error, long(status.sendError));
             else display.printf("Error %u: Opt+P, release, Enter", status.error);
-        } else line(115, ready ? "Screen OFF: typing still works" : "Opt+H: help; typing works when dark");
+        } else line(115, ready ? "Dark: typing + scroll still work" : "Opt+H: help; typing works when dark");
     }
     present();
 }
@@ -210,7 +222,7 @@ void loop() {
     }
     const auto result = keyboard.update(pressed, ready && !confirmPairing && !pairingConsumed);
     if (result.action == KeyboardAction::ToggleDisplay) toggleScreen();
-    else if (result.action == KeyboardAction::ToggleHelp) helpPage = (helpPage + 1U) % 4U;
+    else if (result.action == KeyboardAction::ToggleHelp) helpPage = (helpPage + 1U) % 5U;
     else if (result.action == KeyboardAction::Pairing) {
         // Release remote held modifiers before the confirmation UI captures keyboard input.
         if (ready) ble.send(HidReport{});
@@ -220,6 +232,12 @@ void loop() {
     if (result.send && !ble.send(result.report)) {
         // A failed enqueue must not leave a held modifier/character cached indefinitely.
         keyboard.update(pressed, false);
+        ready = false;
+    }
+    const int8_t step = wheel.update(result.wheelDirection,
+        ready && ble.wheelReady() && !confirmPairing && !pairingConsumed, millis(), pressed == 0);
+    if (step && !ble.sendWheel(step)) {
+        wheel.blockUntilRelease(); keyboard.blockUntilRelease();
     }
     if (ready != lastReady) {
         Serial.printf("CARDKEY_READY=%u heap=%u\n", ready ? 1U : 0U, ESP.getFreeHeap());

@@ -1,6 +1,6 @@
 # Cardputer BLE Keyboard
 
-Turn an **M5Stack Cardputer-ADV** into a Bluetooth keyboard for your phone. Version **0.1.4**.
+Turn an **M5Stack Cardputer-ADV** into a Bluetooth keyboard with scroll shortcuts for your phone. Version **0.2.0**.
 
 把 **M5Stack Cardputer-ADV** 变成手机蓝牙键盘。标准 BLE HID，无需配套应用、服务器、Wi-Fi 或 SD 数据文件。当前仅支持 **ADV**，不支持初代 Cardputer。
 
@@ -12,8 +12,8 @@ Download from [Releases](https://github.com/wsoph/cardputer-ble-keyboard/release
 
 | File | Installation |
 |---|---|
-| `cardputer-keyboard-0.1.4-app.bin` | **M5Launcher + SD**: copy to SD `/firmware/`, select the file and Install. Use an available app slot and preserve other apps. |
-| `cardputer-keyboard-0.1.4-standalone-8mb.bin` | **Standalone / M5Burner**, address `0x0000`. Replaces Launcher, existing apps and settings; not a Launcher app file. |
+| `cardputer-keyboard-0.2.0-app.bin` | **M5Launcher + SD**: copy to SD `/firmware/`, select the file and Install. Use an available app slot and preserve other apps. |
+| `cardputer-keyboard-0.2.0-standalone-8mb.bin` | **Standalone / M5Burner**, address `0x0000`. Replaces Launcher, existing apps and settings; not a Launcher app file. |
 
 推荐 Launcher 用户使用 app.bin 经 SD 安装。独立启动镜像供 M5Burner 使用，会替换 Launcher、其他应用及设置。包内有 SHA-256 校验和调试文件；独立镜像由干净构建产物合并，不从已使用的设备导出。
 
@@ -43,12 +43,27 @@ First boot without saved bonds opens pairing automatically. Saved phones can rec
 | Fn + `;` / `,` / `.` / `/` | Up / Left / Down / Right |
 | Fn + grave/backtick / Fn + Del | Esc / Delete |
 | Fn + 1–0, minus, equals | F1–F12 |
+| **Opt + `;` / Opt + `.`** | **Scroll up / down**; direct physical keys, no Fn |
 | **Opt+C / Opt+V** | Ctrl+Shift+C / Ctrl+Shift+V; copy/paste in supported terminals |
 | **Opt+B** | **Manually turn screen OFF / ON; typing continues while dark** |
 | **Opt+P**, release, Enter | Open pairing |
-| **Opt+H** | Cycle Pair & screen → Basic keys → Daily use → Home |
+| **Opt+H** | Cycle Pair & screen → Basic keys → Scroll → Daily use → Home |
 
 **Opt+B 手动熄屏／亮屏：按一次关背光，再按一次恢复。熄屏后蓝牙和输入继续工作，无自动熄屏或系统休眠。** All documented operations require at most two simultaneous physical keys.
+
+## Scroll / 上下滚动
+
+Hold **Opt**, then press physical **`;`** for up or **`.`** for down. Tap for one wheel step; hold for continuous scrolling after 350ms, then one step every 100ms. Release either key to stop. Typing stays in the same mode. These are standard mouse-wheel events, not application-specific Page Up/Down shortcuts.
+
+**Opt＋`;` 向上、Opt＋`.` 向下。** 先按住 Opt，再按实体符号键，不需要 Fn。短按一格，长按连续滚动，松开停止；Opt+B 熄屏后仍可打字及滚动。
+
+In RustDesk Android, keep **Touch mode**, click or position the remote pointer over the content to scroll, then use these shortcuts. Windows Terminal history, Explorer lists, web pages and desktop chat areas can accept wheel input. The target and distance depend on pointer position, application and Windows wheel settings; a full-screen terminal application may consume wheel input differently. End-to-end acceptance on each app remains pending.
+
+RustDesk 保持触屏模式，把远程鼠标指针放在要滚动的终端、文件列表或聊天内容上再按组合键。一次滚动多少行由 Windows 和应用决定；终端内全屏程序的行为可能不同，各应用实际效果需验收。
+
+0.2.0 adds a separate mouse HID report. If the phone caches an older keyboard-only descriptor, **forget only Cardputer Keyboard on the phone**, then pair again with Opt+P → release → Enter. `Connected - keyboard + scroll` means both reports are ready; `Connected - keyboard only` still allows typing. The firmware never clears global NVS or other applications' bonds.
+
+升级后若手机只识别键盘，在手机蓝牙设置忘记 **Cardputer Keyboard**，再按原流程配对；不要清空设备存储。屏幕显示 `keyboard + scroll` 才表示两个报告都已准备好。
 
 Chinese uses the phone or target computer's input method. The firmware sends US key events, not Unicode or local Pinyin candidates. Alt+Tab and terminal copy/paste depend on the OS and app. Offline input is discarded; after reconnect, release all keys before typing.
 
@@ -78,7 +93,7 @@ Package with `./Package-Keyboard.ps1`; see [release instructions](docs/RELEASING
 
 ## Validation and contribution
 
-0.1.3: user-confirmed pairing, ordinary input, and steady screen on ADV with Honor 400 Pro. 0.1.4 updates instructions and portable tooling; see [validation](docs/VALIDATION.md) for its device acceptance and standalone boot status. Builds do not verify radio/LCD behavior.
+0.1.3: user-confirmed pairing, ordinary input, and steady screen on ADV with Honor 400 Pro. 0.2.0 adds standard wheel input and scroll guidance; see [validation](docs/VALIDATION.md) for its pending phone/RustDesk acceptance and standalone boot status. Builds do not verify radio/LCD behavior. Release binaries remain unpublished until device acceptance.
 
 See [CONTRIBUTING](CONTRIBUTING.md), [architecture](docs/ARCHITECTURE.md), [third-party notices](THIRD_PARTY_NOTICES.md). Project source is **MIT**; dependencies keep their own licenses.
 

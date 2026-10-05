@@ -10,6 +10,7 @@ enum class KeyboardAction { None, ToggleDisplay, Pairing, ToggleHelp };
 struct KeyboardResult {
     HidReport report;
     KeyboardAction action = KeyboardAction::None;
+    int8_t wheelDirection = 0;
     bool send = false;
 };
 class KeyboardCore {
@@ -18,7 +19,7 @@ public:
     void blockUntilRelease() { blocked_ = true; }
 private:
     HidReport previous_;
-    bool wasReady_ = false, blocked_ = false, waitingForRelease_ = true;
+    bool wasReady_ = false, blocked_ = false, waitingForRelease_ = true, scrolling_ = false;
 };
 inline bool hidReady(bool connected, bool authenticated, bool subscribed, bool suspended) {
     return connected && authenticated && subscribed && !suspended;

@@ -4,6 +4,7 @@
 
 struct BleKeyboardStatus {
     bool connected = false, authenticated = false, subscribed = false;
+    bool wheelReady = false;
     bool pairing = false, capsLock = false;
     PairingPromptStatus prompt;
     unsigned pairingSeconds = 0;
@@ -17,7 +18,9 @@ public:
     void openPairing();
     bool pairingInput(uint64_t pressed);
     bool ready() const;
+    bool wheelReady() const;
     bool send(const HidReport& report);
+    bool sendWheel(int8_t direction);
     BleKeyboardStatus status() const;
     void battery(uint8_t percent);
 };

@@ -1,6 +1,8 @@
 #include "keyboard_core.h"
 #include "hid_device_info.h"
 #include "pairing_prompt.h"
+#include "wheel_core.h"
+#include "hid_report_map.h"
 #include <cstdio>
 #include <cstdlib>
 #include <initializer_list>
@@ -78,6 +80,105 @@ void localActions() {
     check(report(core.update(key(2, 13), true), 0, {}), "pair confirmation Enter cannot reach host");
     core.update(0, true);
     check(report(core.update(key(2, 13), true), 0, {0x28}), "fresh Enter after confirmation can reach host");
+}
+void scrollShortcuts() {
+    auto core = connected();
+    const auto up = Opt | key(2, 11), down = Opt | key(3, 11);
+    auto result = core.update(up, true);
+    check(result.wheelDirection == 1 && report(result, 0, {}), "Opt+semicolon scrolls up without typing");
+    check(core.update(up, true).wheelDirection == 1, "held scroll chord stays available for wheel repeat");
+    check(core.update(key(2, 11), true).wheelDirection == 0, "releasing Opt stops wheel immediately");
+    check(report(core.update(key(2, 11), true), 0, {}), "partial scroll release cannot type semicolon");
+    core.update(0, true);
+    check(report(core.update(key(2, 11), true), 0, {0x33}), "ordinary semicolon works after full release");
+    core.update(0, true);
+    check(core.update(down, true).wheelDirection == -1, "Opt+period scrolls down");
+    check(core.update(up | down, true).wheelDirection == 0, "both scroll directions cancel");
+    check(core.update(down | Shift, true).wheelDirection == 0, "three-key scroll chord is rejected");
+    core.update(0, true);
+    core.blockUntilRelease();
+    check(core.update(up, true).wheelDirection == 0, "pairing input cannot generate a wheel event");
+    core.update(0, true);
+    check(core.update(up, false).wheelDirection == 0, "offline scroll is discarded");
+    check(core.update(up, true).wheelDirection == 0, "reconnect never replays a held scroll chord");
+    core.update(0, true);
+    check(core.update(up, true).wheelDirection == 1, "fresh scroll chord after reconnect works");
+}
+void wheelTiming() {
+    WheelCore wheel;
+    check(wheel.update(0, true, 0, true) == 0, "wheel connection starts without scrolling");
+    check(wheel.update(1, true, 10, false) == 1, "short up press emits one wheel step");
+    check(wheel.update(1, true, 359, false) == 0, "holding does not repeat before initial delay");
+    check(wheel.update(1, true, 360, false) == 1, "hold repeats after 350 milliseconds");
+    check(wheel.update(1, true, 459, false) == 0, "repeat is limited to ten steps per second");
+    check(wheel.update(1, true, 460, false) == 1, "repeat continues at 100 milliseconds");
+    check(wheel.update(1, true, 10000, false) == 1, "late loop emits at most one step");
+    check(wheel.update(1, true, 10001, false) == 0, "late loop never replays a backlog");
+    check(wheel.update(0, true, 10002, true) == 0, "release immediately stops scrolling");
+    check(wheel.update(-1, true, 10003, false) == -1, "fresh down press reverses wheel sign");
+    check(wheel.update(-1, false, 10004, false) == 0, "loss of authentication or subscription stops wheel");
+    check(wheel.update(-1, true, 10005, false) == 0, "resubscribe requires a fresh press");
+    check(wheel.update(-1, true, 11000, false) == 0, "held scroll remains blocked after resubscribe");
+    check(wheel.update(0, true, 11000, false) == 0, "partial chord release does not re-arm a lost subscription");
+    check(wheel.update(-1, true, 11000, false) == 0, "restoring a partial chord cannot replay scroll");
+    wheel.update(0, true, 11001, true);
+    check(wheel.update(-1, true, 11002, false) == -1, "release re-arms wheel after resubscribe");
+    wheel.blockUntilRelease();
+    check(wheel.update(-1, true, 12000, false) == 0, "failed send cannot repeat while held");
+    wheel.update(0, true, 12000, false);
+    check(wheel.update(-1, true, 12000, false) == 0, "failed send requires all physical keys up");
+    wheel.update(0, true, 12001, true);
+    check(wheel.update(1, true, 12002, false) == 1, "fresh press recovers from failed send");
+    check(wheel.update(2, true, 12003, false) == 0, "invalid wheel direction is ignored");
+    WheelCore preheld;
+    check(preheld.update(1, true, 0, false) == 0, "new mouse subscription never replays a preheld chord");
+    preheld.update(0, true, 1, true);
+    check(preheld.update(1, true, 0xffffff00U, false) == 1, "wheel starts before millis wraps");
+    check(preheld.update(1, true, 93, false) == 0, "initial delay remains correct across millis wrap");
+    check(preheld.update(1, true, 94, false) == 1, "wheel repeats at wrapped deadline");
+    const auto up = wheelReport(1), down = wheelReport(-1);
+    check(up[0] == 0 && up[1] == 0 && up[2] == 0 && up[3] == 1, "up report contains no click or pointer movement");
+    check(down[0] == 0 && down[1] == 0 && down[2] == 0 && down[3] == 255, "down report uses signed HID wheel byte");
+}
+void hidDescriptor() {
+    // Decode short HID items, verifying the actual payload sizes and Wheel field.
+    unsigned reportId = 0, size = 0, count = 0, page = 0;
+    unsigned bits[3] = {}, outputs[3] = {}, usages[4] = {}, usageCount = 0;
+    int minimum = 0, maximum = 0;
+    bool wheelDeclared = false;
+    for (std::size_t offset = 0; offset < sizeof(hidReportMap);) {
+        const uint8_t prefix = hidReportMap[offset++];
+        unsigned length = prefix & 3U;
+        if (length == 3) length = 4;
+        check(prefix != 0xfe && offset + length <= sizeof(hidReportMap), "HID item is bounded");
+        unsigned value = 0;
+        for (unsigned i = 0; i < length; ++i) value |= unsigned(hidReportMap[offset++]) << (i * 8);
+        const unsigned tag = prefix & 0xfcU;
+        if (tag == 0x84) { reportId = value; check(reportId == 1 || reportId == 2, "HID uses the two declared report IDs"); }
+        else if (tag == 0x74) size = value;
+        else if (tag == 0x94) count = value;
+        else if (tag == 0x04) page = value;
+        else if (tag == 0x14) minimum = length == 1 ? int(int8_t(value)) : int(value);
+        else if (tag == 0x24) maximum = int(value);
+        else if (tag == 0x08 && usageCount < 4) usages[usageCount++] = value;
+        if (tag == 0x80 || tag == 0x90) {
+            check(reportId > 0 && reportId <= 2, "HID data field has a valid report ID");
+            if (tag == 0x80) {
+                for (unsigned i = 0; i < usageCount; ++i) {
+                    if (reportId == 2 && page == 1 && usages[i] == 0x38) {
+                        wheelDeclared = true;
+                        check(size == 8 && minimum == -127 && maximum == 127 && value == 6,
+                              "Wheel is a signed eight-bit relative field");
+                        check(i < count && bits[2] + i * size == 24, "Wheel occupies payload byte four");
+                    }
+                }
+                bits[reportId] += size * count;
+            } else outputs[reportId] += size * count;
+        }
+        if ((prefix & 0x0cU) == 0) usageCount = 0;
+    }
+    check(bits[1] == 64 && outputs[1] == 8, "keyboard descriptor preserves input and LED payload sizes");
+    check(bits[2] == 32 && outputs[2] == 0 && wheelDeclared, "mouse descriptor matches four-byte wheel reports");
 }
 void reconnect() {
     KeyboardCore core;
@@ -188,6 +289,6 @@ void pairingPrompts() {
 }
 }
 int main() {
-    matrix(); localActions(); reconnect(); pairing(); deviceInformation(); pairingPrompts();
+    matrix(); localActions(); scrollShortcuts(); wheelTiming(); hidDescriptor(); reconnect(); pairing(); deviceInformation(); pairingPrompts();
     std::printf("PASS: %d keyboard checks\n", checks);
 }

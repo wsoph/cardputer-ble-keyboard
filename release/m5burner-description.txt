@@ -4,7 +4,9 @@ PAIR: Opt+P → release ALL keys → Enter. Select "Cardputer Keyboard" on the p
 
 SCREEN: Opt+B manually turns screen OFF/ON. Bluetooth and typing continue while dark. No automatic screen-off or deep sleep.
 
-HELP: Opt+H cycles Pair & screen → Basic keys → Daily use → Home. All operations need at most two physical keys at once.
+SCROLL: Opt+physical semicolon = UP; Opt+physical period = DOWN. No Fn or mode switching. Tap one step, hold to repeat, release to stop. Works while dark. Standard mouse wheel targets the area under the remote pointer; RustDesk can stay in Touch mode. If Android caches an older HID descriptor, forget only this keyboard on the phone and pair again. Phone/RustDesk scroll acceptance remains pending.
+
+HELP: Opt+H cycles Pair & screen → Basic keys → Scroll → Daily use → Home. All operations need at most two physical keys at once.
 
 KEYS: Aa=Shift; Del=Backspace; Fn+; , . / = arrows; Fn+grave=Esc; Fn+Del=Delete; Fn+1..0 - = F1..F12. Opt+C/V sends Ctrl+Shift+C/V. Chinese uses phone/host input method.
 
@@ -14,3 +16,5 @@ Source/checksums/validation: https://github.com/wsoph/cardputer-ble-keyboard
 MIT project source; dependencies keep their licenses. See release notes for device and standalone boot validation.
 
 中文：Cardputer-ADV 手机蓝牙键盘。Opt+P→松开全部按键→Enter 配对；手机选择 Cardputer Keyboard，按验证码提示操作。Opt+B 手动熄屏／亮屏，熄屏仍可输入。Opt+H 翻页查看帮助。独立镜像替换 Launcher；保留 Launcher 请用 GitHub app.bin 经 SD 安装。
+
+滚动：Opt＋实体分号向上，Opt＋实体句点向下，无需 Fn。短按一格，长按连续滚动，松开停止；暗屏仍有效。RustDesk 使用触屏模式，把远程指针放在需要滚动的区域。手机缓存旧描述符时只忘记这个设备后重新配对；手机实际效果待验收。

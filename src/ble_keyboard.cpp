@@ -1,5 +1,7 @@
 #include "ble_keyboard.h"
 #include "hid_device_info.h"
+#include "hid_report_map.h"
+#include "wheel_core.h"
 #include <Arduino.h>
 #include <BLEDevice.h>
 #include <BLEHIDDevice.h>
@@ -7,13 +9,15 @@
 #include <BLESecurity.h>
 #include <esp_bt_main.h>
 #include <atomic>
+#include <cstddef>
 #include <cstring>
 
 namespace {
 BLEServer* server = nullptr;
 BLEHIDDevice* hid = nullptr;
-BLECharacteristic *input = nullptr, *bootInput = nullptr;
+BLECharacteristic *input = nullptr, *bootInput = nullptr, *mouseInput = nullptr;
 std::atomic<bool> connected{false}, authenticated{false}, subscribed{false}, bootSubscribed{false};
+std::atomic<bool> mouseSubscribed{false};
 std::atomic<bool> bootMode{false}, suspended{false}, advertisingNeeded{false}, rejectNeeded{false};
 std::atomic<bool> disconnectSent{false};
 std::atomic<bool> pairEnabled{false}, capsLock{false};
@@ -110,19 +114,6 @@ void gapEvent(esp_gap_ble_cb_event_t event, esp_ble_gap_cb_param_t* param) {
     }
 }
 
-// Standard 8-byte keyboard input and 1-byte LED output; report ID lives in GATT 0x2908,
-// and is not prefixed to the characteristic payload. Based on official HID keyboard usages.
-uint8_t reportMap[] = {
-    0x05,0x01, 0x09,0x06, 0xa1,0x01, 0x85,0x01,
-    0x05,0x07, 0x19,0xe0, 0x29,0xe7, 0x15,0x00, 0x25,0x01,
-    0x75,0x01, 0x95,0x08, 0x81,0x02,
-    0x95,0x01, 0x75,0x08, 0x81,0x01,
-    0x95,0x05, 0x75,0x01, 0x05,0x08, 0x19,0x01, 0x29,0x05, 0x91,0x02,
-    0x95,0x01, 0x75,0x03, 0x91,0x01,
-    0x95,0x06, 0x75,0x08, 0x15,0x00, 0x25,0x65,
-    0x05,0x07, 0x19,0x00, 0x29,0x65, 0x81,0x00, 0xc0
-};
-
 class SubscriptionCallbacks : public BLEDescriptorCallbacks {
 public:
     explicit SubscriptionCallbacks(std::atomic<bool>& target) : target_(target) {}
@@ -132,7 +123,7 @@ public:
 private:
     std::atomic<bool>& target_;
 };
-SubscriptionCallbacks reportSubscription(subscribed), bootSubscription(bootSubscribed);
+SubscriptionCallbacks reportSubscription(subscribed), bootSubscription(bootSubscribed), mouseSubscription(mouseSubscribed);
 
 class LedCallbacks : public BLECharacteristicCallbacks {
     void onWrite(BLECharacteristic* characteristic) override {
@@ -157,6 +148,7 @@ class ServerCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer* active, esp_ble_gatts_cb_param_t* param) override {
         if (connected.load()) { active->disconnect(param->connect.conn_id); return; }
         authenticated = false; subscribed = false; bootSubscribed = false;
+        mouseSubscribed = false;
         bootMode = false; suspended = false; capsLock = false;
         newPairAttempt = false;
         rejectNeeded = false; disconnectSent = false; error = 0; sendError = 0;
@@ -175,6 +167,7 @@ class ServerCallbacks : public BLEServerCallbacks {
     void onDisconnect(BLEServer*, esp_ble_gatts_cb_param_t* param) override {
         if (param->disconnect.conn_id != connectionId.load()) return;
         connected = false; authenticated = false; subscribed = false; bootSubscribed = false;
+        mouseSubscribed = false;
         ++linkGeneration;
         clearPrompt(); rejectNeeded = false; disconnectSent = false;
         suspended = false; advertisingNeeded = true;
@@ -186,6 +179,20 @@ void configureSubscription(BLECharacteristic* characteristic, SubscriptionCallba
     auto* descriptor = characteristic->getDescriptorByUUID(BLEUUID(uint16_t(0x2902)));
     descriptor->setAccessPermissions(ESP_GATT_PERM_READ_ENC_MITM | ESP_GATT_PERM_WRITE_ENC_MITM);
     descriptor->setCallbacks(callbacks);
+}
+bool sendReport(BLECharacteristic* characteristic, uint8_t* bytes, std::size_t length) {
+    characteristic->setValue(bytes, length);
+    // BLECharacteristic::notify() defaults to indications and returns no enqueue result.
+    const auto result = esp_ble_gatts_send_indicate(gattInterface.load(), connectionId.load(),
+        characteristic->getHandle(), length, bytes, false);
+    if (result != ESP_OK) {
+        if (sendError.exchange(result) != result)
+            Serial.printf("CARDKEY_BLE=send_failed result=%d interface=%u id=%u handle=%u\n",
+                int(result), unsigned(gattInterface.load()), unsigned(connectionId.load()), unsigned(characteristic->getHandle()));
+        error = 5; return false;
+    }
+    if (sendError.exchange(0) != 0) error = 0;
+    return true;
 }
 }
 
@@ -211,10 +218,13 @@ bool BleKeyboard::begin() {
     if (esp_ble_gap_set_security_param(ESP_BLE_SM_ONLY_ACCEPT_SPECIFIED_SEC_AUTH,
                                       &onlySpecified, sizeof(onlySpecified)) != ESP_OK) return false;
     hid = new BLEHIDDevice(server);
-    input = hid->inputReport(1);
+    input = hid->inputReport(KeyboardReportId);
     input->setAccessPermissions(ESP_GATT_PERM_READ_ENC_MITM);
     configureSubscription(input, &reportSubscription);
-    auto* output = hid->outputReport(1);
+    mouseInput = hid->inputReport(MouseReportId);
+    mouseInput->setAccessPermissions(ESP_GATT_PERM_READ_ENC_MITM);
+    configureSubscription(mouseInput, &mouseSubscription);
+    auto* output = hid->outputReport(KeyboardReportId);
     output->setCallbacks(&ledCallbacks);
     uint8_t noLeds = 0;
     output->setValue(&noLeds, 1);
@@ -233,9 +243,10 @@ bool BleKeyboard::begin() {
     uint8_t pnp[] = {2, 0, 0, 0, 0, 0, 1};
     hid->deviceInfo()->getCharacteristic(BLEUUID(uint16_t(0x2a50)))->setValue(pnp, sizeof(pnp));
     hid->hidInfo(0, 2);
-    hid->reportMap(reportMap, sizeof(reportMap));
+    hid->reportMap(hidReportMap, sizeof(hidReportMap));
     uint8_t zeros[8] = {};
     input->setValue(zeros, sizeof(zeros)); bootInput->setValue(zeros, sizeof(zeros));
+    mouseInput->setValue(zeros, 4);
     hid->startServices();
     auto* advertising = BLEDevice::getAdvertising();
     advertising->setAppearance(HID_KEYBOARD);
@@ -295,28 +306,25 @@ bool BleKeyboard::ready() const {
     return hidReady(connected.load(), authenticated.load(),
                     bootMode.load() ? bootSubscribed.load() : subscribed.load(), suspended.load());
 }
+bool BleKeyboard::wheelReady() const {
+    return !bootMode.load() && hidReady(connected.load(), authenticated.load(), mouseSubscribed.load(), suspended.load());
+}
 bool BleKeyboard::send(const HidReport& report) {
     if (!ready()) return false;
     auto* characteristic = bootMode.load() ? bootInput : input;
     auto bytes = report.bytes;
-    characteristic->setValue(bytes.data(), bytes.size());
-    // Direct official GATT API returns enqueue errors. BLECharacteristic::notify() defaults
-    // to indications in 2.0.17 and does not return send success; never rely on that default.
-    const auto result = esp_ble_gatts_send_indicate(gattInterface.load(), connectionId.load(),
-        characteristic->getHandle(), bytes.size(), bytes.data(), false);
-    if (result != ESP_OK) {
-        if (sendError.exchange(result) != result)
-            Serial.printf("CARDKEY_BLE=send_failed result=%d interface=%u id=%u handle=%u\n",
-                int(result), unsigned(gattInterface.load()), unsigned(connectionId.load()), unsigned(characteristic->getHandle()));
-        error = 5; return false;
-    }
-    if (sendError.exchange(0) != 0) error = 0;
-    return true;
+    return sendReport(characteristic, bytes.data(), bytes.size());
+}
+bool BleKeyboard::sendWheel(int8_t direction) {
+    if (!wheelReady() || (direction != 1 && direction != -1)) return false;
+    auto bytes = wheelReport(direction);
+    return sendReport(mouseInput, bytes.data(), bytes.size());
 }
 BleKeyboardStatus BleKeyboard::status() const {
     BleKeyboardStatus result;
     result.connected = connected.load(); result.authenticated = authenticated.load();
     result.subscribed = bootMode.load() ? bootSubscribed.load() : subscribed.load();
+    result.wheelReady = wheelReady();
     result.pairing = pairingAllowed(); result.prompt = promptStatus();
     result.capsLock = capsLock.load(); result.error = error.load(); result.sendError = sendError.load();
     const uint32_t elapsed = uint32_t(millis() - pairStarted.load());

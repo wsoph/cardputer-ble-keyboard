@@ -31,6 +31,7 @@ KeyboardResult KeyboardCore::update(uint64_t pressed, bool ready) {
     const bool newReady = ready && !wasReady_;
     if (!ready || newReady) waitingForRelease_ = true;
     wasReady_ = ready;
+    if (!pressed) scrolling_ = false;
     if (blocked_ && !pressed) blocked_ = false;
     if (!blocked_ && (pressed & Opt) && !(pressed & (Ctrl | Shift | Alt | Fn))) {
         if (pressed & bit(3, 7)) result.action = KeyboardAction::ToggleDisplay;
@@ -47,7 +48,13 @@ KeyboardResult KeyboardCore::update(uint64_t pressed, bool ready) {
         return result;
     }
     if (!blocked_) {
-        if (pressed & Opt) {
+        const int8_t direction = pressed == (Opt | bit(2, 11)) ? 1 :
+                                 pressed == (Opt | bit(3, 11)) ? -1 : 0;
+        if (direction) scrolling_ = true;
+        if (scrolling_) {
+            // Consume the chord until ALL keys are up, including partial releases.
+            result.wheelDirection = direction;
+        } else if (pressed & Opt) {
             // Two physical keys produce the Windows Terminal three-key shortcuts.
             if (!(pressed & (Ctrl | Shift | Alt | Fn))) {
                 if (pressed & bit(3, 6)) { result.report.bytes[0] = 3; result.report.bytes[2] = 0x19; }
