@@ -1,4 +1,5 @@
 #include "keyboard_core.h"
+#include <cstddef>
 
 namespace {
 constexpr uint64_t bit(int row, int column) { return uint64_t(1) << (row * 14 + column); }
@@ -54,13 +55,13 @@ KeyboardResult KeyboardCore::update(uint64_t pressed, bool ready) {
             }
         } else {
             result.report.bytes[0] = ((pressed & Ctrl) ? 1 : 0) | ((pressed & Shift) ? 2 : 0) | ((pressed & Alt) ? 4 : 0);
-            size_t slot = 2;
+            std::size_t slot = 2;
             for (int index = 0; index < 56; ++index) {
                 const uint8_t code = usage(index, pressed & Fn);
                 if (!(pressed & (uint64_t(1) << index)) || !code) continue;
                 if (slot == 8) {
                     // USB ErrorRollOver instead of silently dropping held keys.
-                    for (size_t i = 2; i < 8; ++i) result.report.bytes[i] = 1;
+                    for (std::size_t i = 2; i < 8; ++i) result.report.bytes[i] = 1;
                     break;
                 }
                 result.report.bytes[slot++] = code;

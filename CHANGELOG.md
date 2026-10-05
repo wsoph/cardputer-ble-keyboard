@@ -7,6 +7,7 @@
 - Explain Opt+B manual screen OFF/ON and continued typing while dark.
 - Add three help pages cycled with Opt+H.
 - Portable build scripts and separate Launcher/standalone release artifacts.
+- Fix Linux native builds by using explicit standard size types.
 
 ## 0.1.3
 
