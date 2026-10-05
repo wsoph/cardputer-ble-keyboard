@@ -1,0 +1,16 @@
+Cardputer BLE Keyboard turns M5Stack Cardputer-ADV into a secure Bluetooth keyboard for your phone. Standard BLE HID; no companion app or Wi-Fi. ADV only, not original Cardputer.
+
+PAIR: Opt+P → release ALL keys → Enter. Select "Cardputer Keyboard" on the phone. Follow the PIN prompt within 30 seconds. Pairing window: 180 seconds. Physical keyboard layout: English (US).
+
+SCREEN: Opt+B manually turns screen OFF/ON. Bluetooth and typing continue while dark. No automatic screen-off or deep sleep.
+
+HELP: Opt+H cycles Pair & screen → Basic keys → Daily use → Home. All operations need at most two physical keys at once.
+
+KEYS: Aa=Shift; Del=Backspace; Fn+; , . / = arrows; Fn+grave=Esc; Fn+Del=Delete; Fn+1..0 - = F1..F12. Opt+C/V sends Ctrl+Shift+C/V. Chinese uses phone/host input method.
+
+INSTALL: Standalone image at 0x0000 replaces Launcher, apps and settings. To keep Launcher, download app.bin from GitHub and use SD Install.
+
+Source/checksums/validation: https://github.com/wsoph/cardputer-ble-keyboard
+MIT project source; dependencies keep their licenses. See release notes for device and standalone boot validation.
+
+中文：Cardputer-ADV 手机蓝牙键盘。Opt+P→松开全部按键→Enter 配对；手机选择 Cardputer Keyboard，按验证码提示操作。Opt+B 手动熄屏／亮屏，熄屏仍可输入。Opt+H 翻页查看帮助。独立镜像替换 Launcher；保留 Launcher 请用 GitHub app.bin 经 SD 安装。

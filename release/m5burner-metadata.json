@@ -1,0 +1,16 @@
+{
+  "name": "Cardputer BLE Keyboard",
+  "version": "0.1.4",
+  "device": "M5Stack Cardputer-ADV",
+  "chip": "ESP32-S3",
+  "flash_size": "8MB",
+  "flash_address": "0x0000",
+  "github": "https://github.com/wsoph/cardputer-ble-keyboard",
+  "firmware": "cardputer-keyboard-0.1.4-standalone-8mb.bin",
+  "cover": "cover.png",
+  "description_file": "m5burner-description.txt",
+  "project_license": "MIT",
+  "replaces_launcher_and_settings": true,
+  "publication_status": "prepared, not uploaded",
+  "note": "Reference for M5Burner UI, not an official import schema. See validation notes."
+}

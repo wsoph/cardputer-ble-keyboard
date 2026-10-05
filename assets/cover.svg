@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="720" viewBox="0 0 1280 720" role="img" aria-labelledby="title desc">
+  <title id="title">Cardputer BLE Keyboard</title>
+  <desc id="desc">Open source Bluetooth keyboard for Cardputer-ADV. Opt+B manually toggles the screen while typing continues.</desc>
+  <rect width="1280" height="720" fill="#101820"/>
+  <rect x="64" y="72" width="188" height="38" rx="8" fill="#ff9e42"/>
+  <text x="86" y="98" fill="#101820" font-family="Arial,sans-serif" font-size="20" font-weight="bold">CARDPUTER-ADV</text>
+  <text x="64" y="205" fill="#f5f7fb" font-family="Arial,sans-serif" font-size="64" font-weight="bold">Cardputer</text>
+  <text x="64" y="279" fill="#f5f7fb" font-family="Arial,sans-serif" font-size="64" font-weight="bold">BLE Keyboard</text>
+  <text x="67" y="332" fill="#a9bac9" font-family="Arial,sans-serif" font-size="25">Physical keys. Your phone's screen.</text>
+  <text x="67" y="420" fill="#ff9e42" font-family="Arial,sans-serif" font-size="26" font-weight="bold">Opt+B · Manual screen OFF / ON</text>
+  <text x="67" y="463" fill="#dbe6ef" font-family="Arial,sans-serif" font-size="23">Keep typing while the screen is off.</text>
+  <text x="67" y="573" fill="#a9bac9" font-family="Arial,sans-serif" font-size="22">Secure BLE pairing · Two-key shortcuts</text>
+  <text x="67" y="615" fill="#a9bac9" font-family="Arial,sans-serif" font-size="22">Open source · MIT · wsoph</text>
+  <rect x="790" y="145" width="420" height="390" rx="30" fill="#1c2a36" stroke="#ff9e42" stroke-width="5"/>
+  <rect x="813" y="168" width="374" height="178" rx="10" fill="#080e14"/>
+  <text x="835" y="211" fill="#69d1c5" font-family="monospace" font-size="19">Cardputer Keyboard</text>
+  <text x="835" y="248" fill="#8fdda0" font-family="monospace" font-size="18">Connected - ready</text>
+  <text x="835" y="286" fill="#edf4f8" font-family="monospace" font-size="17">Opt+B: screen OFF/ON</text>
+  <text x="835" y="321" fill="#a9bac9" font-family="monospace" font-size="16">Opt+H: key help</text>
+  <path d="M813 370h374v30H813z M813 411h374v30H813z M813 452h374v30H813z" fill="#334757"/>
+  <path d="M840 370v112 M871 370v112 M902 370v112 M933 370v112 M964 370v112 M995 370v112 M1026 370v112 M1057 370v112 M1088 370v112 M1119 370v112 M1150 370v112" stroke="#101820" stroke-width="4"/>
+  <rect x="946" y="491" width="128" height="21" rx="4" fill="#ff9e42"/>
+  <text x="863" y="581" fill="#a9bac9" font-family="Arial,sans-serif" font-size="18">Illustration · ADV hardware only</text>
+</svg>

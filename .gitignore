@@ -1,0 +1,18 @@
+.pio/
+release-packages/
+__pycache__/
+*.pyc
+*.bin
+*.elf
+*.map
+*.zip
+*.log
+*.pem
+*.key
+.env
+.env.*
+.vscode/
+# Local development history is excluded from the public source export.
+acceptance.md
+SPEC.md
+tasks/
